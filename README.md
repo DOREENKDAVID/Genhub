@@ -1,5 +1,5 @@
 The following is GenHub project. The project consist of two authors namely
-James kariuki -- jamexkarix583@gmail.com
-Doreen David --  
+<p> James kariuki -- jamexkarix583@gmail.com </p>
+<p> Doreen David --  </p>
 
 # Genhub

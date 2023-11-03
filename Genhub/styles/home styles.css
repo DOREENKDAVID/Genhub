@@ -1,0 +1,61 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f2f2f2;
+    margin: 20px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    /*justify-content: center;
+    align-items: center;*/
+    min-height: 100vh;
+}
+
+/* Set the background image */
+body {
+    /*background-image: url('logo.PNG'); /* Replace with your logo image URL */
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+
+header {
+    background-color: #aa80f3;
+    color: black;
+    text-align: center;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.8); /* Add a semi-transparent background to the header */
+    padding: 0px;
+}
+nav ul {
+    list-style: none;
+    margin: 0;
+    background-color: #aa80f3;
+  color: #fff;
+  padding: 0px;
+  text-align: right;
+  align-items: right;
+}
+
+nav ul li {
+    display: inline;
+    margin-left: 20px;
+}
+
+.container {
+    max-width: 400px;
+    margin: 20px auto;
+    padding: 0px;
+    background-color: rgba(255, 255, 255, 0.9); /* Semi-transparent background for the container */
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+footer {
+    background-color: #aa80f3;
+    color: #fff;
+    padding: 20px;
+    border-bottom: 50px;
+    margin: 200px;
+    text-align: center;
+  }

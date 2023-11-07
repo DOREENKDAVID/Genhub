@@ -1,53 +1,41 @@
-#!/usr/bin/python3
-"""Translates a DNA strand to mRNA and mRNA to protein"""
 
-from Bio.Seq import Seq
 from Bio import SeqIO
-from Bio import ExPASy
 from Bio import Entrez
 from Bio.SeqRecord import SeqRecord
-import os
+from Bio.Seq import Seq
 import sqlite3
 from tabulate import tabulate
-import re
+import os
 
-
-# Define functions for reading sequences from files and databases
-def read_sequence_from_file(file_path):
+def read_sequences_from_file(file_path):
+    """function that reads a file from user input gets the sequence ans stores in db"""
     if os.path.isfile(file_path):
+        #try extracting from file and getting the accession code and sequence
         try:
-            with open(file_path, "r") as file:
-                if file_path.endswith((".fasta", ".fa", ".genbank", ".gbk")):
-                    sequences = list(SeqIO.parse(file, "fasta"))
-                    if len(sequences) == 1:
-                        # Extract accession code from the description
-                        accession_code = get_accession_code(sequences[0].description)
-                        if accession_code:
-                            return accession_code, sequences[0].seq
-                else:
-                    return Seq(file.read())
+            sequences = list(SeqIO.parse(file_path, "fasta"))
+            if sequences:
+                return sequences
+            else:
+                print("No sequences found in the file.")
         except Exception as e:
             print("Error:", str(e))
             return None
-
-def read_sequence_from_database(db, accession_code):
-    Entrez.email = "A.N.Other@example.com"
-    if db.lower() == 'swissprot':
-        try:
-            with ExPASy.get_sprot_raw(accession_code) as handle:
-                seq_record = SeqIO.read(handle, "swiss")
-                return seq_record.seq
-        except Exception as e:
-            print("Error during online query:", str(e))
     else:
-        try:
+        print(f"File not found: {file_path}")
+        return None
+    
+def read_sequence_from_database(db, accession_code):
+    """function to get the file from a database and modify it"""
+    Entrez.email = "A.N.Other@example.com"
+    try:            
             with Entrez.efetch(db=db, rettype="fasta", retmode="text", id=accession_code) as handle:
                 seq_record = SeqIO.read(handle, "fasta")
                 return seq_record.seq
-        except Exception as e:
+    except Exception as e:            
             print("Error during online query:", str(e))
             return None
-
+    
+    
 # Define functions for DNA/RNA/protein operations
 def complement(sequence):
     seq_complement = sequence.complement()
@@ -89,42 +77,26 @@ def translate_dna(sequence):
         print(f"Translation Error: {str(e)}")
         return "Translation Error"
     
-def get_accession_code(description):
-    """Method to get the accession code from a local file."""
-    if not isinstance(description, str):
-        return None
 
-    # Use a regular expression to extract the accession code
-    match = re.search(r'>(\S+)', description)
-    if match:
-        return match.group(1)
-    return None
-
-    
-
-    
-
-# Define a function to save a sequence to a file
 def save_sequence_to_file(sequence, accession_code, step, filename):
+    """function to save a sequence and modified sequence to a file"""
 
     # Check if the input is a SeqRecord or a Seq object
     if isinstance(sequence, SeqRecord):
         header = f">{accession_code} {step} {sequence.description}\n"
-        sequence = str(sequence.seq)
+        sequence = str(sequence)
     else:
         header = f">{accession_code} {step}\n"
-        # Extract the description from the sequence if available
-        description = get_accession_code(sequence)
-        if description:
-            header += f"{description}\n"
-
         sequence = str(sequence)
+        
     with open(filename, "w") as file:
         file.write(header)
         file.write(sequence)
 
+
 # Database logic
 def create_database(database_name):
+    """function that created the sequence db"""
     conn = sqlite3.connect(database_name)
     cursor = conn.cursor()
     # Commit and close the connection to create the database file
@@ -132,6 +104,7 @@ def create_database(database_name):
     conn.close()
 
 def create_tables(database_name):
+    """functions to create the tables to th db"""
     conn = sqlite3.connect(database_name)
     cursor = conn.cursor()
 
@@ -164,6 +137,7 @@ def create_tables(database_name):
     conn.close()
 
 def insert_or_update_sequences(database_name, accession_code, sequence, table_name):
+    """function to insert the original sequence to sequences db"""
     
     conn = sqlite3.connect(database_name)
     cursor = conn.cursor()
@@ -175,6 +149,7 @@ def insert_or_update_sequences(database_name, accession_code, sequence, table_na
     conn.close()
     
 def insert_or_update_modified_sequences(database_name, accession_code, seq_complement, reverse_complement_dna, mRNA, Protein_seq_mRNA):
+    """function to insert the modified seruences to modified table"""
     conn = sqlite3.connect(database_name)
     cursor = conn.cursor()
     cursor.execute('''
@@ -219,47 +194,43 @@ def query_modified_seq_table(database_name, accession_code):
     else:
         None
 
+
 if __name__ == "__main__":
     create_database('sequences_data.db')
     create_tables('sequences_data.db')
-    accession_code = None
     file_path = input("Enter the path to a local file (or press Enter to skip this option): ")
-    db = None
 
-    if file_path and (file_path.lower().endswith(('.fasta', '.fa', '.genbank', '.gbk')) or os.path.isfile(file_path)):
-        sequence = read_sequence_from_file(file_path)
-        accession_code = get_accession_code(sequence)
-        print(f"Accession Code: {accession_code}")
-        if accession_code:
-            insert_or_update_sequences('sequences_data.db', accession_code, str(sequence), 'sequences')
-        else:
-            print("Invalid accession code. Cannot insert into the sequences table.")
+    if file_path:
+        sequences = read_sequences_from_file(file_path)
+        if sequences:
+            for sequence in sequences:
+                accession_code = sequence.description.split('|')[1]
+                seq = str(sequence.seq)
+                insert_or_update_sequences('sequences_data.db', accession_code, seq, 'sequences')
 
-    
+
     else:
         sequence = None
-
+    #if there is sequence in file perform the central dogma
     if sequence is not None:
-        seq_complement = complement(sequence)
-        reverse_complement_dna = reverse_complement(sequence)
-        mRNA = transcribe(sequence)
+        seq_complement = complement(sequence.seq)
+        reverse_complement_dna = reverse_complement(sequence.seq)
+        mRNA = transcribe(sequence.seq)
         coding_dna = reverse_transcribe(mRNA)
         protein_seq_mRNA = translate_mRNA(mRNA)
-        protein_seq_dna = translate_dna(sequence)
+        protein_seq_dna = translate_dna(sequence.seq)
 
+        #save the modifies sequences to file for users to download
         save_sequence_to_file(sequence, accession_code, "Original Sequence", "original.fasta")
         save_sequence_to_file(seq_complement, accession_code, "Complement Sequence", "complement.fasta")
         save_sequence_to_file(reverse_complement_dna, accession_code, "Reverse Complement Sequence", "reverse_complement_dna.fasta")
         save_sequence_to_file(mRNA, accession_code, "mRNA Sequence", "mRNA.fasta")
         save_sequence_to_file(coding_dna, accession_code, "Coding DNA Sequence", "coding_dna.fasta")
         save_sequence_to_file(protein_seq_mRNA, accession_code, "Protein Sequence (from mRNA)", "protein_seq_mRNA.fasta")
-        #save_sequence_to_file(protein_seq_dna, accession_code, "Protein Sequence (from DNA)", "protein_seq_dna.fasta")
-        accession_code = get_accession_code(sequence)
-        if accession_code:
-            insert_or_update_modified_sequences('sequences_data.db', accession_code, seq_complement, reverse_complement_dna, mRNA, protein_seq_mRNA)
-        else:
-            print("Invalid accession code. Cannot insert into the modified table.")
+        insert_or_update_modified_sequences('sequences_data.db', accession_code, seq_complement, reverse_complement_dna, mRNA, protein_seq_mRNA)
 
+
+    #query the online databases to get the sequences
     else:
         db = input("Enter the database (e.g., 'nucleotide'): ")
         accession_code = input("Enter the ID of the record: ")
@@ -268,8 +239,11 @@ if __name__ == "__main__":
             sequence = read_sequence_from_database(db, accession_code)
             if sequence:
                 sequence = Seq(sequence)
+                #if the sequence is found add to sequences table
                 insert_or_update_sequences('sequences_data.db', accession_code, str(sequence), 'sequences')
                 accession_code = input("Enter the ID of the query record: ")
+
+                #user can query the db to get the original seq vs its modified sequeces
                 result = query_database('sequences_data.db', accession_code, 'sequences')
                 if result:
                     table = [["Record_ID", "sequence"], [accession_code, result]]
@@ -282,6 +256,8 @@ if __name__ == "__main__":
                 mRNA = transcribe(sequence)
                 coding_dna = reverse_transcribe(mRNA)
                 protein_seq_mRNA = translate_mRNA(mRNA)
+
+                #save the sequences searched from the  online db to files for users to download
                 save_sequence_to_file(sequence, accession_code, "Original Sequence", "original.fasta")
                 save_sequence_to_file(seq_complement, accession_code, "Complement Sequence", "complement.fasta")
                 save_sequence_to_file(reverse_complement_dna, accession_code, "Reverse Complement Sequence", "reverse_complement_dna.fasta")
@@ -290,6 +266,7 @@ if __name__ == "__main__":
                 save_sequence_to_file(protein_seq_mRNA, accession_code, "Protein Sequence (from mRNA)", "protein_seq_mRNA.fasta")
                 insert_or_update_modified_sequences('sequences_data.db', accession_code, seq_complement, reverse_complement_dna, mRNA, protein_seq_mRNA)
                 accession_code = input("Enter the ID of the query record: ")
+                #query the modified database
                 result = query_modified_seq_table('sequences_data.db', accession_code)
 
                 if result:
@@ -317,3 +294,4 @@ if __name__ == "__main__":
                 print("Error retrieving sequence from the database.")
         else:
             print("Invalid input. Database query requires both 'db' and 'id'.")
+

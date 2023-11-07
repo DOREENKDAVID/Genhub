@@ -150,7 +150,7 @@ if __name__ == "__main__":
         protein_seq_dna = translate_dna(sequence)
 
         # Save the sequences to files
-        save_sequence_to_file(seq_record, accession_code, "original.fasta")
+       # save_sequence_to_file(seq_record, accession_code, "original.fasta")
         save_sequence_to_file(seq_complement, accession_code, "complement.fasta")
         save_sequence_to_file(template_dna, accession_code, "template_dna.fasta")
         save_sequence_to_file(mRNA, accession_code, "mRNA.fasta")
